@@ -1,35 +1,97 @@
-const currencyEl_one = document.getElementById('currency-one');
-const currencyEl_two = document.getElementById('currency-two');
-const amountEl_one = document.getElementById('amount-one');
-const amountEl_two = document.getElementById('amount-two');
+const search = document.getElementById('search'),
+    submit = document.getElementById('submit'),
+    random = document.getElementById('random'),
+    mealsEl = document.getElementById('meals'),
+    resultHeading = document.getElementById('result-heading');
+single_mealEl = document.getElementById('single-meal');
 
-const rateEl = document.getElementById('rate');
-const swap = document.getElementById('swap');
+function searchMeal(e) {
+    e.preventDefault();
 
-function calculate() {
-    const currency_one = currencyEl_one.value;
-    const currency_two = currencyEl_two.value;
+    single_mealEl.innerHTML = '';
 
-    fetch(`https://api.exchangerate-api.com/v4/latest/${currency_one}`)
-        .then(res => res.json())
+    const term = search.value;
+
+    if (term.trim()) {
+        fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${term}
+`).then(res => res.json()).then(data => {
+            resultHeading.innerHTML = `<h2>Search results for '${term}' : </h2>`;
+
+            if (data.meals === null) {
+                resultHeading.innerHTML = `<p> There are no search results. Try again!</p>`;
+            } else {
+                mealsEl.innerHTML = data.meals.map(meal => `
+                <div class="meal">
+                <img src="${meal.strMealThumb}" alt="${meal.strMeal}"/>
+                <div class = "meal-info" data-mealID="${meal.idMeal}">
+                <h3>${meal.strMeal}</h3>
+                </div>
+                </div>
+                `)
+                    .join('');
+            }
+        });
+
+        search.value = '';
+    } else {
+        alert('Please enter a search term');
+    }
+}
+
+function getMealById(mealID) {
+    fetch(`https://www.themealdb.com/api/json/v1/1/lookup.php?i=${mealID}
+`).then(res => res.join())
         .then(data => {
-            const rate = data.rates[currency_two];
+            const meal = data.meals[0];
 
-            rateEl.innerText = `1 ${currency_one} = ${rate} ${currency_two}`;
-
-            amountEl_two.value = (amountEl_one.value * rate).toFixed(2);
+            addMealToDOM(meal);
         });
 }
 
-currencyEl_one.addEventListener('change', calculate);
-amountEl_one.addEventListener('input', calculate);
-currencyEl_two.addEventListener('change', calculate);
-amountEl_two.addEventListener('input', calculate);
+function addMealToDOM(meal) {
+    const ingredients = [];
 
-swap.addEventListener('click', () => {
-    const temp = currencyEl_one.value;
-    currencyEl_one.value = currencyEl_two.value;
-    currencyEl_two.value = temp;
-    calculate();
-})
-calculate();
+    for (let i = 1; i <= 20; i++) {
+        if (meal[`strIngredient${i}`]) {
+            ingredients.push(`${meal[`strIngredient${i}`]} - ${meal[`strMeasure${i}`]}`);
+        } else {
+            break;
+        }
+    }
+
+    single_mealEl.innerHTML = `
+    <div class="single-meal">
+    <h1>${meal.strMeal}</h1>
+    <img src="${meal.strMealThumb}" alt="${meal.strMeal}" />
+    <div class="single-meal-info">
+    ${meal.strCategory ? `<p>${meal.strCategory}</p>` : ''}
+    ${meal.strArea ? `<p>${mealstrArea}</p>` :''}
+    </div>
+    <div class="main">
+    <p>${meal.strInstructions}</p>
+    <h2>Ingredients</h2>
+    <ul>
+    ${ingredients.map(ing=>`<li>${ing}</li>`).join('')}
+    </ul>
+    </div>
+    </div>
+    `;
+}
+
+
+submit.addEventListener('submit', searchMeal);
+
+mealsEl.addEventListener('click', e => {
+    const mealInfo = e.path.find(item => {
+        if (item.classList) {
+            return item.classList.contains('meal-info');
+        } else {
+            return false;
+        }
+    });
+
+    if (mealInfo) {
+        const mealID = mealInfo.getAttribute('data-mealid');
+        getMealById(mealID);
+    }
+});
